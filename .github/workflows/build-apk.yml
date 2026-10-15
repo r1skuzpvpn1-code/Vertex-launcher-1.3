@@ -1,0 +1,47 @@
+
+name: Build VERTEX Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract project ZIP
+        run: |
+          mkdir extracted
+          ZIP_FILE=$(find . -maxdepth 1 -name '*.zip' -print -quit)
+          test -n "$ZIP_FILE"
+          unzip -q "$ZIP_FILE" -d extracted
+          PROJECT_DIR=$(dirname "$(find extracted -name settings.gradle -type f -print -quit)")
+          test -f "$PROJECT_DIR/settings.gradle"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Build debug APK
+        run: gradle --no-daemon -p "$PROJECT_DIR" assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VERTEX-Launcher-debug-apk
+          path: extracted/**/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          
